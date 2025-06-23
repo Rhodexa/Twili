@@ -5,8 +5,8 @@
   ssstdddddddddddd ddddccce-------- ssstdddddddddddd ddddccce--------
 
   A Twili packet consists of 24 bytes carrying 16 bytes worth of payload
-  s: Start bytes
-  t: Target Index
+  s: Start bytes  - String '<=>'
+  t: Target Index - Index this packet is addressed to. In this galaxy values from 0 to 15 are allowed (256 channels). But this can go all the way up to 63 (1024 channels)
   d: Data byte
   c: Checksum
   e: End byte
@@ -14,15 +14,20 @@
 */
 
 #include "ledchan.h"
+#include "jumpers.h"
 
 // This device's target index (Which packet index are we listening for)
 // Maybe this can be set up using the cutting-edge technology of DIP switches or Jumpers.
+// This can be configured using jumpers inside the box.
 int device_target_index = 0;
 
 void setup()
 {
   Serial.begin(19200);
   ledchan_begin();
+  jumpers_begin();
+  delay(1000);
+  device_target_index = jumpers_get();
 }
 
 int from64_error = 0;
