@@ -23,11 +23,13 @@ int device_target_index = 0;
 
 void setup()
 {
-  Serial.begin(19200);
+  Serial.begin(57600);
   ledchan_begin();
   jumpers_begin();
   delay(1000);
   device_target_index = jumpers_get();
+  Serial.print("Booted! ID:");
+  Serial.println(device_target_index);
 }
 
 int from64_error = 0;
@@ -45,58 +47,64 @@ int from64(char c)
 const int PACKET_LENGTH = 24;
 const int SERIAL_BUFFER_LENGTH = 256; // Don't change this!! Lmao
 char serial_buffer[SERIAL_BUFFER_LENGTH];
-uint8_t serial_buffer_head = 0; // Loops at 255. This makes the most crude circular buffer
-uint8_t serial_buffer_head_temp = 0; // used to revert back if an error occurred (kind of like a cancel)
-bool data_error = true;
+uint8_t buffer_write_head = 0; // Loops at 255. This makes the most crude circular buffer
+uint8_t buffer_read_head = 0;  // Loops at 255. This makes the most crude circular buffer
+bool data_error = true;        // used for tracking... doesn't really play a role in functionality
 
+auto curtime = millis();
+auto lastime = curtime;
 void loop()
 {
   while(Serial.available())
   {
     char c = Serial.read();
-    serial_buffer[serial_buffer_head++] = c;
+    serial_buffer[buffer_write_head++] = c;
     if(c == '\n')
     {
-      serial_buffer_head_temp = serial_buffer_head; // store current localtion in the buffer
-      serial_buffer_head -= PACKET_LENGTH; // Revert cursor to data start
+      buffer_read_head = buffer_write_head; // store current localtion in the buffer
+      buffer_read_head -= PACKET_LENGTH;    // Revert cursor to data start
       parseData();
-      if (data_error)
-      { 
-        // Packet wasn't for us or was broken.
-        // Undo cursor positioning and keep listening.
-        serial_buffer_head = serial_buffer_head_temp;        
-      }
     }
+  }
+  curtime = millis();
+  if(curtime - lastime >= 5){
+    lastime = curtime;
+    run();
   }
 }
 
-int data_target = 0;
 int data_framebuffer[16];
 void parseData()
 {
   data_error = true;
-  if(serial_buffer[serial_buffer_head++] != '<') return;
-  if(serial_buffer[serial_buffer_head++] != '=') return;
-  if(serial_buffer[serial_buffer_head++] != '>') return;
-  data_target = from64(serial_buffer[serial_buffer_head++]);
-  if(from64_error) return;
+  if(serial_buffer[buffer_read_head++] != '<') return;
+  if(serial_buffer[buffer_read_head++] != '=') return;
+  if(serial_buffer[buffer_read_head++] != '>') return;
+  if(device_target_index != from64(serial_buffer[buffer_read_head++]))
+  {
+    data_error = false; // We don't really know... but this packet wasn't ours anyway.
+    return;
+  } 
+  if(from64_error) return; // This should really never fire... I believe.
 
   int data_sum = 0;
   for(int i = 0; i < 16; i++)
   {
-    int data = from64(serial_buffer[serial_buffer_head++]);
+    int data = from64(serial_buffer[buffer_read_head++]);
     data_sum += data;
     data_framebuffer[i] = data;
   }
 
-  int             checksum  = from64(serial_buffer[serial_buffer_head++]); if(from64_error) return;
-  checksum *= 64; checksum += from64(serial_buffer[serial_buffer_head++]); if(from64_error) return;
-  checksum *= 64; checksum += from64(serial_buffer[serial_buffer_head++]); if(from64_error) return;
+  int             checksum  = from64(serial_buffer[buffer_read_head++]); if(from64_error) return;
+  checksum *= 64; checksum += from64(serial_buffer[buffer_read_head++]); if(from64_error) return;
+  checksum *= 64; checksum += from64(serial_buffer[buffer_read_head++]); if(from64_error) return;
 
   if(data_sum != checksum) return;
-  if(serial_buffer[serial_buffer_head++] != '\n') return;
+  if(serial_buffer[buffer_read_head++] != '\n') return;
 
   /* Woohoo! Everything passed the tests! */
+  data_error = false;
+
   // Time to update the timers 
   for(int i = 0; i < 16; i++)
   {

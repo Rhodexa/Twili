@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "driver/ledc.h"  // <-- pulls in enums & structs like ledc_timer_config_t
 
+// <=>B/AAAAAAAAAAAAAAAAA/
 unsigned int gamma_lut[] = {
   0x0000, 0x0002, 0x0008, 0x0013, 0x0021, 0x0034, 0x004A, 0x0065,
   0x0084, 0x00A7, 0x00CE, 0x00FA, 0x0129, 0x015D, 0x0194, 0x01D0,
@@ -19,6 +20,9 @@ int framebuffer[16] = {
   0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0
 };
+
+float values[16];
+float targets[16];
 
 const int PIN_LED[16] = {
   /*  0  */ 16,
@@ -39,7 +43,7 @@ const int PIN_LED[16] = {
   /* 15  */ 14
 };
 
-const int PWM_FRQ = 9000;
+const int PWM_FRQ = 4883; //9765;
 const int PWM_RESOLUTION = 13;
 const ledc_timer_t PWM_TIMER = LEDC_TIMER_0;
 
@@ -75,7 +79,7 @@ void ledchan_begin(){
     ledc_channel_config(&group_a_ledc_channel);
 
     ledc_channel_config_t group_b_ledc_channel = {
-      .gpio_num       = PIN_LED[ch],
+      .gpio_num       = PIN_LED[ch + 8],
       .speed_mode     = LEDC_LOW_SPEED_MODE,
       .channel        = (ledc_channel_t)ch,
       .intr_type      = LEDC_INTR_DISABLE,
@@ -93,15 +97,26 @@ void ledchan_begin(){
   }
 }
 
-void ledchan_update()
-{
+
+void run(){
+  for(int i = 0; i < 16; i++){
+    values[i] += (targets[i] - values[i]) * 0.15;
+  }
+
   for (int ch = 0; ch < 8; ++ch) {
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE, (ledc_channel_t)ch, gamma_lut[framebuffer[ch]]);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE,  (ledc_channel_t)ch, gamma_lut[framebuffer[ch + 8]]);
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, (ledc_channel_t)ch, 0x1FFF - (int)values[ch]);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE,  (ledc_channel_t)ch, 0x1FFF - (int)values[ch + 8]);
   }
   for (int ch = 0; ch < 8; ++ch) {
     ledc_update_duty(LEDC_HIGH_SPEED_MODE, (ledc_channel_t)ch);
     ledc_update_duty(LEDC_LOW_SPEED_MODE,  (ledc_channel_t)ch);
+  }
+}
+
+void ledchan_update()
+{
+  for(int i = 0; i < 16; i++){
+    targets[i] = gamma_lut[framebuffer[i]];
   }
 }
 
