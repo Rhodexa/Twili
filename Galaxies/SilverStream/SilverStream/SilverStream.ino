@@ -31,7 +31,7 @@ void setup() {
       brightness++;
       if(brightness == 127) down = 1;
     }
-    framebuffer[0] = brightness;
+    framebuffer[3] = brightness;
     ledchan_update();
     delay(41);
   }

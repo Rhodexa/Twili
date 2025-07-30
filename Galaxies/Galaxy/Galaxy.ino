@@ -37,6 +37,8 @@
 #include "ledchan.h"
 #include "jumpers.h"
 
+//#define PUKE
+
 // This device's target index (Which packet index are we listening for)
 // Maybe this can be set up using the cutting-edge technology of DIP switches or Jumpers.
 // This can be configured using jumpers inside the box.
@@ -48,27 +50,32 @@ void setup()
   ledchan_begin();
   jumpers_begin();
   delay(1000);
-  target_id = jumpers_get();
+  //target_id = jumpers_get();
   Serial.print("Booted! ID:");
   Serial.println(target_id);
 }
 
 class NumberParser {
 public:
-    bool failed = true;
+  bool failed = true;
 
-    int parse(char c) {
-        if (!(c & 0x80)) {
-            failed = true;
-            return -1;
-        }
-        failed = false;
-        return c & 0x7F;  // Return the 7-bit value
+  int parse(char c) {
+    if (!(c & 0x80)) {
+      failed = true;
+      #ifdef PUKE
+        Serial.print("Number Error  ");
+        Serial.print(c);
+      #endif
+      return -1;
     }
+    failed = false;
+    return c & 0x7F;  // Return the 7-bit value
+  }
 };
 NumberParser number;
 
 class Buffer {
+public:
   static const int BUFFER_SIZE = 256;
   uint8_t data[BUFFER_SIZE];
   uint8_t write_head = 0;
@@ -77,7 +84,7 @@ class Buffer {
     data[write_head++] = c;
   }
   char read(){
-    return = data[read_head++];
+    return data[read_head++];
   }
 };
 Buffer buffer;
@@ -93,7 +100,15 @@ void loop()
   {
     char c = Serial.read();
     buffer.write(c);
-    if(c == '\n') parseData();
+    if(c == '\n') {
+      int error = parseData();
+      #ifdef PUKE
+        if(error) {
+          Serial.print("Error ");
+          Serial.println(error);
+        }
+      #endif
+    }
   }
 
   curtime = millis();
@@ -104,22 +119,28 @@ void loop()
 }
 
 int framebuffer_temp[CHANNEL_COUNT];
+int incoming_framebuffer[CHANNEL_COUNT];
+
 int parseData()
 {
   // Sync heads
-  buffer.read_head = buffer.write_head; 
+  buffer.read_head = buffer.write_head-1; 
 
   // Is this packet for us?
-  if(target_id != number(buffer.data[buffer.read_head - 1])) // position(EOP) - 1 <target_id> char
+  if(target_id != number.parse(buffer.data[buffer.read_head - 1])) // position(EOP) - 1 <target_id> char
   {
     // Looks like it isn't our ID, could it be a SWAP, or worse, a char error?
-    if(!number_error) return 0; // Just not our ID. No problem!
+    if(!number.failed) return 8; // Just not our ID. No problem!
     if(buffer.data[buffer.read_head - 1] != 'P') return 1;
     if(buffer.data[buffer.read_head - 2] != 'A') return 1;
     if(buffer.data[buffer.read_head - 3] != 'W') return 1;
     if(buffer.data[buffer.read_head - 4] != 'S') return 1;
 
     // Looks like it was a SWAP!
+    for(int i = 0; i < CHANNEL_COUNT; i++)
+    {
+      framebuffer[i] = framebuffer_temp[i];
+    }
     ledchan_update(); // Update PWM
     return 0;
   }
@@ -128,28 +149,29 @@ int parseData()
   buffer.read_head -= PACKET_LENGTH - 1; // Go back in time to the start of the command
 
   // Is the start code here?
-  if(buffer.read() != 'T') return 1;
-  if(buffer.read() != 'W') return 1;
+  if(buffer.read() != 'T') return 2;
+  if(buffer.read() != 'W') return 2;
 
   // Start code was there! Let's read the data... also let's take in the sum
   int data_sum = 0;
   for(int i = 0; i < CHANNEL_COUNT; i++)
   {
-    int data = number(buffer.read());
+    int data = number.parse(buffer.read());
     data_sum += data;
-    framebuffer_temp[i] = data;
+    incoming_framebuffer[i] = data;
   }
 
   // Get the checksum we expect
-  int checksum = number(buffer.read()) * 128;
-  checksum += number(buffer.read());
-  if(number_error) return 1; // we probably don't need this, but oh well
+  int checksum = number.parse(buffer.read()) * 128;
+  checksum += number.parse(buffer.read());
+  if(number.failed) return 5; // we probably don't need this, but oh well
 
   // Is our checksum the same as expected?
-  if(data_sum != checksum) return 1;
+  if(data_sum != checksum) return 3;
 
   // Also not needed! But useful for debugging (look at me defending my overengineered nonsense)
-  if(buffer.read() != '\n') return 1;
+  buffer.read_head ++; //dummy ID read
+  if(buffer.read() != '\n') return 4;
 
   // Time to update buffers
   for(int i = 0; i < CHANNEL_COUNT; i++)
@@ -159,8 +181,8 @@ int parseData()
     // And yes, I realise i could use a pointer swap instead, but its 15 items come on!
 
     // I'm not paranoid! You are!
-    if(framebuffer_temp[i] != -1)
-      framebuffer[i] = framebuffer_temp[i];
+    if(incoming_framebuffer[i] != -1)
+      framebuffer_temp[i] = incoming_framebuffer[i];
   }
   return 0;
 }

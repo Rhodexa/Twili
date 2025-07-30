@@ -104,8 +104,8 @@ void ledchan_begin(){
 void ledchan_update()
 {
   for (int ch = 0; ch < 8; ++ch) {
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE, (ledc_channel_t)ch, 0x1FFF - (int)gamma_lut[framebuffer[ch]]);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE,  (ledc_channel_t)ch, 0x1FFF - (int)gamma_lut[framebuffer[ch + 8]]);
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, (ledc_channel_t)ch, /* 0x1FFF - */ (int)gamma_lut[framebuffer[ch]]);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE,  (ledc_channel_t)ch, /* 0x1FFF - */ (int)gamma_lut[framebuffer[ch + 8]]);
   }
   for (int ch = 0; ch < 8; ++ch) {
     ledc_update_duty(LEDC_HIGH_SPEED_MODE, (ledc_channel_t)ch);
