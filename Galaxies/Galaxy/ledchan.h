@@ -32,23 +32,12 @@ float values[16];
 float targets[16];
 
 const int PIN_LED[16] = {
-   2, /* 0 R */ /*  0  */ 
-   4, /* 0 G */ /*  1  */ 
-  16, /* 0 B */ /*  2  */ 
-  25, /* 0 C */ /*  3  */ 
-  33, /* 0 W */ /*  4  */ 
-  17, /* 1 R */ /*  5  */ 
-  18, /* 1 G */ /*  6  */ 
-  19, /* 1 B */ /*  7  */ 
-  32, /* 1 C */ /*  8  */ 
-  13, /* 1 W */ /*  9  */ 
-  21, /* 2 R */ /* 10  */ 
-  22, /* 2 G */ /* 11  */ 
-  23, /* 2 B */ /* 12  */ 
-  27, /* 2 C */ /* 13  */ 
-  26, /* 2 W */ /* 14  */
+/* R   G   B   C   W */
+   2,  4, 16, 25, 33,
+  17, 18, 19, 32, 13,
+  21, 22, 23, 27, 26,
 
-  14  /* Unused */ /* 15  */ 
+  14  /* dummy - simplfies setup logic a bit */
 };
 
 const int PWM_FRQ = 4883; //9765;
@@ -123,9 +112,7 @@ void run(){
 
 void ledchan_update()
 {
-  for(int i = 0; i < 16; i++){
-    targets[i] = gamma_lut[framebuffer[i]];
-  }
+  for(int i = 0; i < 16; i++){ targets[i] = gamma_lut[framebuffer[i]]; }
 }
 
 #endif
