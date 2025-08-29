@@ -36,24 +36,14 @@
 
 #include "ledchan.h"
 #include "jumpers.h"
-
 //#define PUKE
 
-// This device's target index (Which packet index are we listening for)
-// Maybe this can be set up using the cutting-edge technology of DIP switches or Jumpers.
-// This can be configured using jumpers inside the box.
-int target_id = 0;
+ // Total length of a Twili packet for this galaxy including target ID (1), checksum (2), SOP (2) and EOP (1) = 1+2+2+1 = 6 => +15 channels
+const int CHANNEL_COUNT = 15;
+const int PACKET_LENGTH = 6 + CHANNEL_COUNT;
 
-void setup()
-{
-  Serial.begin(57600);
-  ledchan_begin();
-  jumpers_begin();
-  delay(1000);
-  //target_id = jumpers_get();
-  Serial.print("Booted! ID:");
-  Serial.println(target_id);
-}
+int framebuffer_temp[CHANNEL_COUNT];
+int incoming_framebuffer[CHANNEL_COUNT];
 
 class NumberParser {
 public:
@@ -89,8 +79,40 @@ public:
 };
 Buffer buffer;
 
-const int CHANNEL_COUNT = 15;
-const int PACKET_LENGTH = 6 + CHANNEL_COUNT; // Total length of a Twili packet for this galaxy including target ID (1), checksum (2), SOP (2) and EOP (1) = 1+2+2+1 = 6 => +15 channels
+// This device's target index (Which packet index are we listening for)
+// Maybe this can be set up using the cutting-edge technology of DIP switches or Jumpers.
+// This can be configured using jumpers inside the box.
+int target_id = 0;
+
+void setup()
+{
+  Serial.begin(57600);
+  ledchan_begin();
+  jumpers_begin();
+  delay(1000);
+  //target_id = jumpers_getValue();
+  Serial.print("Booted! ID:");
+  Serial.println(target_id);
+
+  while(true)
+  {
+    for(int o = 0; o < 15; o++)
+    {
+      for(int i = 0; i < 128; i++)
+      {
+        framebuffer[o] = i;
+        ledchan_update();
+        delay(8);
+      }
+      for(int i = 0; i < 128; i++)
+      {
+        framebuffer[o] = 127-i;
+        ledchan_update();
+        delay(8);
+      }
+    }
+  }
+}
 
 auto curtime = millis();
 auto lastime = curtime;
@@ -117,9 +139,6 @@ void loop()
     run();
   }
 }
-
-int framebuffer_temp[CHANNEL_COUNT];
-int incoming_framebuffer[CHANNEL_COUNT];
 
 int parseData()
 {

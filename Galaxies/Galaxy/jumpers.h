@@ -17,7 +17,7 @@ void jumpers_begin(){
   pinMode(JUMPER_BIT_3, INPUT);
 }
 
-int jumpers_get(){
+int jumpers_getValue(){
   int result = 0;
   if(digitalRead(JUMPER_BIT_0)) result += 1;
   if(digitalRead(JUMPER_BIT_1)) result += 2;
