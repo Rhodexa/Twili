@@ -75,7 +75,7 @@ void sendTwiliPacket() {
   packet[idx++] = (byte)(c1 + 0x80);
   packet[idx++] = (byte)(c2 + 0x80);
 
-  packet[idx++] = (byte)(0x80); // example Target ID
+  packet[idx++] = (byte)(0x80 + 0); // example Target ID
   packet[idx++] = (byte)'\n';
 
   myPort.write(packet);

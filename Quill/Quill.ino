@@ -94,27 +94,26 @@ void setup()
   Serial.print("Booted! ID:");
   Serial.println(target_id);
 
-  /*while(true)
+  while(true)
   {
-    for(int o = 0; o < 15; o++)
+    int o = 12;
+    for(int i = 0; i < 128; i++)
     {
-      for(int i = 0; i < 128; i++)
-      {
-        framebuffer[o] = i;
-        ledchan_update();
-        run();
-        delay(8);
-      }
-
-      for(int i = 0; i < 128; i++)
-      {
-        framebuffer[o] = 127-i;
-        ledchan_update();
-        run();
-        delay(8);
-      }
+      framebuffer[o] = i;
+      ledchan_update();
+      run();
+      delay(15);
     }
-  }*/
+    delay(3000);
+    for(int i = 0; i < 128; i++)
+    {
+      framebuffer[o] = 127-i;
+      ledchan_update();
+      run();
+      delay(15);
+    }
+    delay(3000);
+  }
 }
 
 auto curtime = millis();
