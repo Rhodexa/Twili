@@ -1,0 +1,11 @@
+rgbcw transform(rgb){
+	rgb cold_white = WHITE_COLD;
+	rgb warm_white = WHITE_WARM;
+	rgbcw.c = distance(rgb, cold_white);
+	rgbcw.w = distance(rgb, warm_white);
+	white_mask = (rgbcw.c + rgbcw.w) * harshness; // 0.5?
+	rgbcw.r = rgb.r * aggression - mask;
+	rgbcw.g = rgb.g * aggression - mask;
+	rgbcw.b = rgb.b * aggression - mask;
+	return rgbcw;
+}

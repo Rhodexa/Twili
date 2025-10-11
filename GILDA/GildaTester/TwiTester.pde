@@ -14,7 +14,7 @@ Transmitter midiIn;
 void setup() {
   size(400, 100);
   printArray(Serial.list());
-  myPort = new Serial(this, "COM5", 57600);
+  myPort = new Serial(this, "COM5", 115200);
 
   for (int i = 0; i < NUM_CHANNELS; i++) {
     twiliChannels[i] = 0;
@@ -50,35 +50,25 @@ void draw() {
     sendTwiliPacket();
     packetDirty = false;
   }
-  //myPort.write("SWAP\n");
 }
 
 void sendTwiliPacket() {
-  byte[] packet = new byte[2 + NUM_CHANNELS + 2 + 1 + 1]; // 'TW' + 15 channels + 2 checksum + 1 ID + '\n'
+  byte[] packet = new byte[2 + NUM_CHANNELS + 1 + 1]; // 'GILDA' + 15 channels + NUM_CHANNELS '\n'
   int idx = 0;
 
   // Start-of-packet
-  packet[idx++] = (byte)'T';
-  packet[idx++] = (byte)'W';
-
-  int checksum = 0;
+  packet[idx++] = (byte)'G';
+  packet[idx++] = (byte)'L';
 
   for (int i = 0; i < NUM_CHANNELS; i++) {
     int val = (twiliChannels[i] & 0x7F) + 0x80;
     packet[idx++] = (byte)(val & 0xFF);
-    checksum += twiliChannels[i];
   }
-
-  int c1 = (checksum >> 7) & 0x7F;
-  int c2 = checksum & 0x7F;
-  packet[idx++] = (byte)(c1 + 0x80);
-  packet[idx++] = (byte)(c2 + 0x80);
-
-  packet[idx++] = (byte)(0x80 + 10); // example Target ID
-  packet[idx++] = (byte)'\n';
+  
+  packet[idx++] = (byte)(0x80 + NUM_CHANNELS);
+  packet[idx] = (byte)'\n';
 
   myPort.write(packet);
-  myPort.write("SWAP\n");
 }
 
 
